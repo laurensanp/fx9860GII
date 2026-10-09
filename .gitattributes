@@ -1,0 +1,7 @@
+# Raw data must never get line-ending conversion.
+*.bin binary
+*.rgb binary
+*.g1a binary
+*.exe binary
+*.ico binary
+*.png binary

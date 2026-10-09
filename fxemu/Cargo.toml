@@ -1,0 +1,19 @@
+[package]
+name = "fxemu"
+version = "0.1.0"
+edition = "2021"
+description = "Emulator for the CASIO fx-9860GII-2 (SH7305) running a real firmware dump"
+
+[dependencies]
+
+[target.'cfg(windows)'.dependencies]
+minifb = "0.27"
+
+[profile.release]
+opt-level = 3
+debug = 0
+strip = true
+panic = "unwind"
+
+[profile.dev]
+opt-level = 1
