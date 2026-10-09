@@ -146,7 +146,7 @@ cargo build --release --target x86_64-pc-windows-gnu
 ```
 
 Ergebnis: `target/x86_64-pc-windows-gnu/release/fxemu.exe`. Die Firmware wird beim Bauen
-eingebettet. Alternativ lässt sich ein Dump zur Laufzeit mit `--rom DATEI` laden.
+eingebettet. Mit `--rom DATEI` lässt sich zur Laufzeit ein anderer Dump verwenden.
 
 ### Debug-Optionen
 
