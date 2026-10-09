@@ -1,239 +1,139 @@
 # fx-9860GII-2 – Firmware-Dump und Emulator
 
-Dieses Projekt hat die komplette Firmware eines CASIO fx-9860GII-2
-("USB POWER GRAPHIC 2", Hardware-ID `Gy363007`, OS 02.09.0201) aus dem
-echten Gerät ausgelesen und einen eigenen Emulator geschrieben, der diese
-Firmware unverändert ausführt. Bootloader und Betriebssystem laufen wie auf dem
-Rechner, mit den Einstellungen und Daten, die beim Auslesen darauf gespeichert waren.
+Für dieses Projekt habe ich die Firmware meines CASIO fx-9860GII-2 ("USB POWER GRAPHIC 2",
+Hardware-ID `Gy363007`, OS 02.09.0201) ausgelesen und einen Emulator geschrieben, der sie
+unverändert ausführt, vom Bootloader bis zum Betriebssystem.
 
-**Die Firmware ist nicht in diesem Repository.** Sie gehört CASIO. Zum Bauen brauchst
-du einen Dump deines eigenen Rechners. Wie ich meinen ausgelesen habe, steht Schritt für
-Schritt [weiter unten](#so-habe-ich-meine-firmware-ausgelesen).
+Die Firmware selbst ist nicht enthalten, da sie CASIO gehört. Wer den Emulator nutzen
+möchte, benötigt einen Dump des eigenen Rechners; mein Vorgehen dazu beschreibe ich
+[unten](#auslesen-der-firmware).
 
 <img src="fxemu/res/skin/skin.png" alt="Emulator-Fenster" width="300">
 
-Das Fenster ist dem echten Rechner nachgebildet: silbernes Gehäuse, dunkles Bedienfeld
-mit Display, runde REPLAY-Wippe, und über jeder Taste die orange SHIFT-Funktion
-und der rote ALPHA-Buchstabe.
+## Nutzung
 
-## Schnellstart
+1. Dump als `dump/fx9860gii2_full_4MB.bin` ablegen.
+2. Emulator [bauen](#bauen); die Firmware wird dabei in die exe eingebettet.
+3. Die exe starten.
 
-1. Den 4-MiB-Dump deines Rechners als `dump/fx9860gii2_full_4MB.bin` ablegen
-   (siehe [So habe ich meine Firmware ausgelesen](#so-habe-ich-meine-firmware-ausgelesen)).
-2. Den Emulator bauen (siehe [Bauen](#bauen)). Die Firmware wird dabei in die exe eingebettet.
-3. Die exe doppelklicken.
+Der erste Start bootet den Rechner in etwa 8 Sekunden. Beim Schließen des Fensters wird
+der komplette Zustand gespeichert, beim nächsten Start geht es an derselben Stelle weiter.
+SHIFT + AC/ON schaltet aus, AC/ON wieder ein. Es läuft stets nur eine Instanz.
 
-- Der allererste Start bootet den Rechner (ca. 8 Sekunden, wie beim echten Gerät).
-  Danach geht es bei jedem Start genau dort weiter, wo das Fenster geschlossen wurde.
-- **Schließen (X)** = Ausschalten. Alles wird gespeichert.
-- **SHIFT + AC/ON** schaltet aus, **AC/ON** wieder ein.
-- Die fertige exe ist eigenständig (Firmware eingebaut, keine weiteren Dateien nötig).
-  Gib sie deshalb nicht weiter. Es läuft immer nur eine Instanz; ein zweiter Start holt das offene Fenster nach vorne.
-
-### Bedienung
-
-| Eingabe | Wirkung |
+| Eingabe | Funktion |
 |---|---|
-| Maus | Tasten anklicken (gedrückte Taste leuchtet auf); Pfeile über den Rand der REPLAY-Wippe |
-| `0`–`9` `+ - * / ( ) ^ . ,` | werden direkt eingegeben |
+| Maus | Tasten anklicken; Pfeile über den Rand der REPLAY-Wippe |
+| `0`–`9` `+ - * / ( ) ^ . ,` | direkte Eingabe |
 | Enter / Backspace / Esc | EXE / DEL / EXIT |
 | Pfeiltasten, F1–F6 | wie am Rechner |
-| `M` / Pos1 (Home) / Tab | MENU / AC/ON / ALPHA |
+| `M` / Pos1 / Tab | MENU / AC/ON / ALPHA |
 | `s` `c` `t` `l` `x` `e` | sin / cos / tan / ln / X,θ,T / EXP |
-| SHIFT | nur per Maus (die PC-Umschalttaste wird für `(` und `*` gebraucht) |
 
-Unten im Fenster:
-- **Turbo**: läuft so schnell wie möglich, etwa für langsame Graphen.
-- **Screenshot**: speichert das Display als PNG in deinen Bilder-Ordner.
-- **Restart**: startet den Rechner neu; gespeicherte Dateien bleiben erhalten.
+SHIFT ist nur per Maus erreichbar, da die Umschalttaste des PCs für `(` und `*` gebraucht
+wird. Unten im Fenster befinden sich **Turbo** (volle Geschwindigkeit), **Screenshot**
+(PNG im Bilder-Ordner) und **Restart** (Neustart, Dateien bleiben erhalten). Das Fenster
+passt sich beim Start der Bildschirmhöhe an und lässt sich frei skalieren.
 
-Beim Start passt sich das Fenster an die Bildschirmhöhe an. Es lässt sich größer oder kleiner ziehen; der Rechner skaliert mit.
+Der emulierte Flash (`flash.bin`) und der gespeicherte Zustand (`state.bin`) liegen in
+`%APPDATA%\fxemu\`. Wird der Ordner gelöscht, startet der Rechner wieder im Zustand des Dumps.
 
-### Wo die Daten liegen
+## Auslesen der Firmware
 
-`%APPDATA%\fxemu\`
-- `flash.bin`: der emulierte Flash-Speicher (OS, deine Dateien und Einstellungen)
-- `state.bin`: Momentaufnahme des ganzen Rechners zum Fortsetzen
+Voraussetzungen: ein fx-9860GII-2 mit 4 MiB Flash, ein Mini-USB-Datenkabel, Windows mit
+Python 3 und [Zadig](https://zadig.akeo.ie/).
 
-Wer den Ordner löscht, bekommt den Rechner im Zustand vom Zeitpunkt des Dumps zurück.
-Der Original-Dump wird dabei nicht verändert.
+Das Link-Protokoll des Rechners kann den Flash nicht lesen. Ich habe deshalb das Add-in
+`romdump/ROMDUMP.g1a` geschrieben, das jeweils 1 MiB des ROMs als Datei in den Speicher
+kopiert. Da Speicher und ROM auf demselben Flash-Chip liegen, kopiert es über einen
+RAM-Puffer. Die Dateien lade ich anschließend mit `p7.py` herunter.
 
-## Projektinhalt
+Der Rechner verlässt den Empfangsmodus nach jedem Befehl; vor jedem `p7.py`-Aufruf ist
+daher erneut **MENU → LINK → F2 (RECV)** nötig.
 
-| Pfad | Inhalt |
-|---|---|
-| `fxemu/` | Quellcode des Emulators (Rust) |
-| `romdump/` | Quellcode und fertiges Dumper-Add-in `ROMDUMP.g1a` für den Rechner |
-| `p7.py` | PC-Link-Werkzeug (CASIO Protocol 7.00 über USB) |
+1. **Treiber:** Rechner im Empfangsmodus anschließen. In Zadig unter *Options → List All
+   Devices* das Gerät **CESG502** (`07CF 6101`) wählen und **WinUSB** installieren.
+   CASIOs FA-124 funktioniert danach erst wieder, wenn der Treiber im Geräte-Manager
+   zurückgesetzt wird.
+2. **Werkzeug:** `pip install pyusb libusb-package`, Test mit `python p7.py info`.
+3. **Add-in:** `python p7.py prep romdump/ROMDUMP.g1a` räumt den Speicher auf und überträgt
+   RomDump.
+4. **Segmente 0 bis 3**, jeweils: RomDump öffnen, Segment mit ▲/▼ wählen, EXE drücken und
+   auf "Done! Now use LINK." warten, dann Empfangsmodus und
+   `python p7.py pull ROM00.bin --outdir dump` (Nummer anpassen). Ein Segment dauert
+   etwa 3 Minuten; die Datei wird danach vom Rechner gelöscht.
+5. **Zusammenfügen:**
+   `copy /b dump\ROM00.bin+dump\ROM01.bin+dump\ROM02.bin+dump\ROM03.bin dump\fx9860gii2_full_4MB.bin`
 
-Nicht im Repository (per `.gitignore` ausgeschlossen): `dump/` mit der Firmware und die
-gebaute `fx9860GII.exe`, weil sie die Firmware enthält.
-
-### Aufteilung des Flash
+Zur Kontrolle zeigen RomDump und `p7.py pull` eine Prüfsumme. Bei Segment 0 und 1 stimmen
+beide überein; Segment 2 und 3 enthalten den Speicher, den RomDump gerade beschreibt,
+dort weichen sie ab. Das Ergebnis ist 4 194 304 Bytes groß, an `0x10000` steht `CASIOWIN`.
+RomDump lässt sich anschließend über MENU → MEMORY löschen.
 
 | Adresse | Inhalt |
 |---|---|
-| `0x000000` | Bootloader (Marker `CASIOABS`) |
-| `0x010000` | Betriebssystem 02.09.0201 (Header `CASIOWIN`) |
+| `0x000000` | Bootloader (`CASIOABS`) |
+| `0x010000` | Betriebssystem (`CASIOWIN`) |
 | `0x250000` | Sicherung des Hauptspeichers (`CASIOMEMDATA`) |
-| `0x270000` | Speicher-Dateisystem (deine Dateien) |
-| `0x300000+` | größtenteils leer |
+| `0x270000` | Speicher-Dateisystem |
 
-## So habe ich meine Firmware ausgelesen
+`p7.py` implementiert CASIOs Protocol 7.00 nach der Dokumentation des
+[Cahute-Projekts](https://cahuteproject.org/) (Befehle: `info`, `ls`, `get`, `put`, `pull`,
+`rm`, `optimize`, `prep`). Das Add-in baue ich mit dem
+[fxSDK](https://git.planet-casio.com/Lephenixnoir/fxsdk) (`fxsdk build-fx` in `romdump/`).
 
-Jeder braucht die Firmware seines eigenen Rechners. So bin ich vorgegangen; mit den
-Werkzeugen in diesem Repository kannst du es genauso machen.
+## Emulator
 
-**Du brauchst:** einen fx-9860GII-2 ("USB POWER GRAPHIC 2", 4 MiB Flash), ein
-Mini-USB-Kabel, das Daten überträgt (reine Ladekabel gehen nicht), einen Windows-PC mit
-Python 3 sowie [Zadig](https://zadig.akeo.ie/).
+Der Emulator in `fxemu/` ist in Rust geschrieben; einzige Abhängigkeit ist `minifb` für
+das Windows-Fenster.
 
-### 1. USB-Treiber einrichten
-
-1. Rechner per USB anschließen, dann **MENU → LINK → F2 (RECV)**.
-2. Zadig starten, **Options → List All Devices**, das Gerät **CESG502** wählen
-   (USB-ID `07CF 6101`), als Treiber **WinUSB** einstellen und **Install Driver** klicken.
-3. Python-Pakete installieren:
-
-   ```bash
-   pip install pyusb libusb-package
-   ```
-
-4. Verbindung testen; die Ausgabe zeigt unter anderem OS-Version und Flash-Größe:
-
-   ```bash
-   python p7.py info
-   ```
-
-Wichtig: Der Rechner verlässt den Empfangsmodus nach jedem Befehl. Vor jedem
-`p7.py`-Befehl also erneut **F2 (RECV)** im LINK-Menü drücken.
-
-Nach dem Wechsel auf WinUSB erkennt CASIOs FA-124 den Rechner nicht mehr, bis der Treiber
-im Geräte-Manager zurückgesetzt wird.
-
-### 2. Das Dumper-Add-in übertragen
-
-Das Link-Protokoll kann keinen Flash lesen. Deshalb gibt es das kleine Add-in
-`romdump/ROMDUMP.g1a`: Es läuft auf dem Rechner und kopiert jeweils 1 MiB des ROMs als
-Datei in den Speicher. Weil Speicher und ROM auf demselben Flash-Chip liegen, kopiert es
-über einen RAM-Puffer.
-
-Dieser Befehl räumt den Speicher auf (damit 1 MiB frei ist) und überträgt das Add-in:
-
-```bash
-python p7.py prep romdump/ROMDUMP.g1a
-```
-
-Danach steht **RomDump** im Hauptmenü.
-
-### 3. Die vier Segmente auslesen
-
-Für jedes Segment 0 bis 3 eine Runde:
-
-1. **MENU → RomDump** öffnen, mit **▲/▼** das Segment wählen, **EXE** drücken.
-2. Warten, bis **"Done! Now use LINK."** erscheint. Den angezeigten **Sum**-Wert notieren.
-3. **MENU → LINK → F2 (RECV)**, dann am PC (Beispiel für Segment 0):
-
-   ```bash
-   python p7.py pull ROM00.bin --outdir dump
-   ```
-
-   Das lädt die Datei herunter (etwa 3 Minuten), löscht sie vom Rechner und räumt den
-   Speicher wieder auf.
-
-Zum Prüfen gibt `p7.py pull` ebenfalls eine Summe aus ("word sum"). Bei Segment 0 und 1
-muss sie mit der auf dem Rechner übereinstimmen. Segment 2 und 3 enthalten den Speicher,
-in den RomDump gerade schreibt; dort weichen die Summen ab, das ist normal.
-
-### 4. Zusammenfügen
-
-```bash
-copy /b dump\ROM00.bin+dump\ROM01.bin+dump\ROM02.bin+dump\ROM03.bin dump\fx9860gii2_full_4MB.bin
-```
-
-Die Datei muss genau 4 194 304 Bytes groß sein; an Adresse `0x10000` steht der Text
-`CASIOWIN`. Danach kann RomDump über **MENU → MEMORY** wieder vom Rechner gelöscht werden.
-
-### Werkzeuge im Detail
-
-`p7.py` spricht CASIOs Protocol 7.00 über USB (Dokumentation:
-[Cahute-Projekt](https://cahuteproject.org/)). Befehle: `info`, `ls`, `get`, `put`, `pull`,
-`rm`, `optimize`, `prep`.
-
-Das Add-in lässt sich mit dem [fxSDK](https://git.planet-casio.com/Lephenixnoir/fxsdk)
-neu bauen: `fxsdk build-fx` im Ordner `romdump/`.
-
-## Der Emulator (`fxemu/`)
-
-Geschrieben in Rust, ohne Abhängigkeiten bis auf `minifb` für das Windows-Fenster.
-
-| Datei | Aufgabe |
+| Datei | Inhalt |
 |---|---|
-| `src/cpu.rs` | SH-4A-Prozessor (SH4AL-DSP): Befehlssatz, Delay-Slots, Registerbänke, Exceptions, Interrupts, MMU/TLB |
-| `src/bus.rs` | Speicherkarte und On-Chip-Peripherie des SH7305 |
+| `src/cpu.rs` | SH-4A-Kern: Befehlssatz, Delay-Slots, Registerbänke, Exceptions, Interrupts, MMU |
+| `src/bus.rs` | Speicherkarte und Peripherie des SH7305 |
 | `src/timers.rs` | TMU, ETMU, CMT, Echtzeituhr |
-| `src/flash.rs` | NOR-Flash mit AMD/Spansion-Befehlssatz |
-| `src/lcd.rs` | Display-Controller (T6K11-kompatibel, 128×64) |
-| `src/state.rs` | Speichern/Laden des kompletten Zustands |
-| `src/gui.rs` | natives Windows-Fenster |
-| `src/web.rs` | Browser-Oberfläche (für `--web` und Nicht-Windows) |
+| `src/flash.rs`, `src/lcd.rs` | NOR-Flash und Display-Controller (T6K11-kompatibel) |
+| `src/state.rs` | Speichern und Laden des Zustands |
+| `src/gui.rs`, `src/web.rs` | Windows-Fenster bzw. Browser-Oberfläche (`--web`) |
 | `src/main.rs` | Start, Zeitsteuerung, Debug-Optionen |
-| `res/make_skin.py` | zeichnet die Rechner-Oberfläche im Stil des echten fx-9860GII (Ergebnis in `res/skin/`) |
+| `res/make_skin.py` | zeichnet die Oberfläche nach dem Vorbild des echten Rechners |
 
-### Selbst herausgefundene Hardware-Details
+Einige Hardware-Details habe ich in keiner Dokumentation gefunden und aus dem OS-Code
+abgeleitet:
 
-Diese Punkte standen in keiner Dokumentation, die wir gefunden haben; sie stammen aus dem OS-Code:
-
-- **Boot-Pin:** Port `0xA405013A` Bit 0 muss 1 lesen, sonst startet das OS im
-  "OSUpdate"-Modus.
-- **Tastatur (KEYSC):** Status-Register `0xA44B0014`; das untere Byte sind Ereignis-Flags
-  (Bit 3 = neue Tastendaten), die durch Zurückschreiben gelöscht werden.
-  Die Tastenmatrix liegt in `0xA44B0000–0B`.
-- **BCD-Rechenwerk** `0xA4CB0010` (CASIO-eigen): addiert/subtrahiert 8-stellige
-  Dezimalzahlen. Operanden in `+0x14`/`+0x18`, Ergebnis in `+0x1C`. Befehl: Bit 0 = Addition
-  (sonst a − b), Bit 1 = Übertrag des vorigen Schritts verwenden, Bit 2 = Übertrag 1.
-  Das OS rechnet alle Zahlen über dieses Werk.
+- **Boot-Pin:** Port `0xA405013A` Bit 0 muss 1 lesen, sonst startet das OS im Update-Modus.
+- **Tastatur:** Status-Register `0xA44B0014`; das untere Byte enthält Ereignis-Flags
+  (Bit 3 = neue Tastendaten), die durch Zurückschreiben gelöscht werden. Die Tastenmatrix
+  liegt in `0xA44B0000–0B`.
+- **BCD-Rechenwerk** `0xA4CB0010`: addiert und subtrahiert 8-stellige Dezimalzahlen
+  (Operanden `+0x14`/`+0x18`, Ergebnis `+0x1C`; Befehlsbit 0 = Addition statt a − b,
+  Bit 1 = vorigen Übertrag verwenden, Bit 2 = Übertrag 1). Das OS führt alle Rechnungen
+  darüber aus.
 - **Batterie-ADC** `0xA4610080`, **CMT-Timer** `0xA44A0000`, **DMA** `0xFE008020`.
 
 ### Bauen
 
-Voraussetzung: dein Dump liegt unter `dump/fx9860gii2_full_4MB.bin`. Ohne diese Datei
-bricht der Build ab.
-
-In WSL Ubuntu mit Rust und `gcc-mingw-w64-x86-64`:
+In WSL Ubuntu mit Rust und `gcc-mingw-w64-x86-64`, bei vorhandenem Dump:
 
 ```bash
 cd fxemu
 cargo build --release --target x86_64-pc-windows-gnu
 ```
 
-Ergebnis: `target/x86_64-pc-windows-gnu/release/fxemu.exe`. Die Firmware wird beim Bauen
-eingebettet. Mit `--rom DATEI` lässt sich zur Laufzeit ein anderer Dump verwenden.
+Das Ergebnis liegt unter `target/x86_64-pc-windows-gnu/release/fxemu.exe`. Mit
+`--rom DATEI` lässt sich zur Laufzeit ein anderer Dump laden. Für die Fehlersuche gibt
+es einen Modus ohne Fenster, etwa `fxemu --headless 10 --fast --press 9:EXE --profile`;
+alle Optionen stehen in `fxemu/README.md`.
 
-### Debug-Optionen
+### Grenzen
 
-```bash
-fxemu --headless 10 --fast --press 9:EXE --screen-every 2 --profile
-```
-
-`--headless` läuft ohne Fenster und gibt am Ende einen Bericht samt Display als Text aus.
-Weitere Optionen: `--trace-io`, `--trace-irq`, `--trace-exc`, `--trace-flash`,
-`--break ADRESSE`, `--trace-all-after SEKUNDEN`, `--web`, `--rom DATEI`, `--data-dir ORDNER`
-(siehe `fxemu/README.md`).
-
-## Grenzen
-
-- Kein USB-Link: Programme/Add-ins lassen sich nicht vom PC in den Emulator übertragen.
-- Kein serieller Port (3-Pin-Kabel).
-- Zeitverhalten nur ungefähr (nicht taktgenau); die Batterie zeigt immer einen festen Wert.
-- Add-ins (`.g1a`) sind ungetestet.
-- Die Löschblock-Aufteilung des Flash-Chips ist geschätzt; sehr viele Speicher-Operationen
-  könnten den *emulierten* Speicher beschädigen (nie den echten Rechner).
+Ein USB-Link und der serielle Port fehlen, das Zeitverhalten ist nicht taktgenau, und
+die Batterie meldet einen festen Wert. Add-ins sind ungetestet. Die Löschblöcke des Flash
+sind geschätzt; sehr viele Speicher-Operationen könnten den emulierten Speicher
+beschädigen, nie den echten Rechner.
 
 ## Rechtliches
 
-Dieses Repository enthält nur eigenen Code. Die Firmware gehört CASIO und ist deshalb
-nicht enthalten. Ein eigener Dump und die daraus gebaute exe sind nur für den eigenen
-Gebrauch gedacht und dürfen nicht weitergegeben oder veröffentlicht werden.
-CASIO und fx-9860GII sind Marken der CASIO Computer Co., Ltd.; dieses Projekt ist kein
-Produkt von CASIO.
+Das Repository enthält ausschließlich eigenen Code. Ein selbst erstellter Dump und die
+daraus gebaute exe sind nur für den eigenen Gebrauch bestimmt und dürfen nicht
+weitergegeben werden. CASIO und fx-9860GII sind Marken der CASIO Computer Co., Ltd.;
+dieses Projekt steht in keiner Verbindung zu CASIO.
