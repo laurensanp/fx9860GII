@@ -22,7 +22,6 @@ BG = (17, 22, 28)
 SILVER = (214, 215, 212)
 SILVER_EDGE = (176, 178, 176)
 PANEL = (40, 41, 43)
-BEZEL = (24, 24, 25)
 LCD_BG = (183, 191, 168)
 TEXT_DARK = (58, 61, 66)
 ORANGE = (232, 160, 40)
@@ -84,8 +83,8 @@ img.paste(model, (W - 220 - 16, 18), model)
 
 # --- dark upper panel with the screen ---
 d.rounded_rectangle([16, 62, W - 17, 528], radius=30, fill=PANEL)
-d.rounded_rectangle([26, 72, W - 27, 300], radius=22, fill=BEZEL)
-d.rectangle([LCD_X - 4, LCD_Y - 4, LCD_X + 128 * LCD_SCALE + 3, LCD_Y + 64 * LCD_SCALE + 3], fill=(12, 12, 12))
+# The screen window around the LCD has the LCD's own background colour.
+d.rounded_rectangle([26, 72, W - 27, 300], radius=22, fill=LCD_BG)
 d.rectangle([LCD_X, LCD_Y, LCD_X + 128 * LCD_SCALE - 1, LCD_Y + 64 * LCD_SCALE - 1], fill=LCD_BG)
 
 # "USB POWER GRAPHIC 2"
