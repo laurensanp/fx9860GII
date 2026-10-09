@@ -1,4 +1,4 @@
-# fx-9860GII-2 – Firmware-Dump und Emulator
+# fx-9860GII
 
 Dieses Projekt umfasst einen Emulator für den CASIO fx-9860GII-2 ("USB POWER GRAPHIC 2",
 Hardware-ID `Gy363007`, OS 02.09.0201) sowie die Werkzeuge, mit denen die Firmware aus dem
@@ -21,14 +21,14 @@ Der erste Start bootet den Rechner in etwa 8 Sekunden. Beim Schließen des Fenst
 der komplette Zustand gespeichert, beim nächsten Start geht es an derselben Stelle weiter.
 SHIFT + AC/ON schaltet aus, AC/ON wieder ein. Es läuft stets nur eine Instanz.
 
-| Eingabe | Funktion |
-|---|---|
-| Maus | Tasten anklicken; Pfeile über den Rand der REPLAY-Wippe |
-| `0`–`9` `+ - * / ( ) ^ . ,` | direkte Eingabe |
-| Enter / Backspace / Esc | EXE / DEL / EXIT |
-| Pfeiltasten, F1–F6 | wie am Rechner |
-| `M` / Pos1 / Tab | MENU / AC/ON / ALPHA |
-| `s` `c` `t` `l` `x` `e` | sin / cos / tan / ln / X,θ,T / EXP |
+| Eingabe                     | Funktion                                                |
+| --------------------------- | ------------------------------------------------------- |
+| Maus                        | Tasten anklicken; Pfeile über den Rand der REPLAY-Wippe |
+| `0`–`9` `+ - * / ( ) ^ . ,` | direkte Eingabe                                         |
+| Enter / Backspace / Esc     | EXE / DEL / EXIT                                        |
+| Pfeiltasten, F1–F6          | wie am Rechner                                          |
+| `M` / Pos1 / Tab            | MENU / AC/ON / ALPHA                                    |
+| `s` `c` `t` `l` `x` `e`     | sin / cos / tan / ln / X,θ,T / EXP                      |
 
 SHIFT ist nur per Maus erreichbar, da die Umschalttaste des PCs für `(` und `*` gebraucht
 wird. Unten im Fenster befinden sich **Turbo** (volle Geschwindigkeit), **Screenshot**
@@ -51,8 +51,8 @@ werden die Dateien mit `p7.py` heruntergeladen.
 Der Rechner verlässt den Empfangsmodus nach jedem Befehl; vor jedem `p7.py`-Aufruf ist
 daher erneut **MENU → LINK → F2 (RECV)** nötig.
 
-1. **Treiber:** Rechner im Empfangsmodus anschließen. In Zadig unter *Options → List All
-   Devices* das Gerät **CESG502** (`07CF 6101`) wählen und **WinUSB** installieren.
+1. **Treiber:** Rechner im Empfangsmodus anschließen. In Zadig unter _Options → List All
+   Devices_ das Gerät **CESG502** (`07CF 6101`) wählen und **WinUSB** installieren.
    CASIOs FA-124 funktioniert danach erst wieder, wenn der Treiber im Geräte-Manager
    zurückgesetzt wird.
 2. **Werkzeug:** `pip install pyusb libusb-package`, Test mit `python p7.py info`.
@@ -70,12 +70,12 @@ beide überein; Segment 2 und 3 enthalten den Speicher, den RomDump gerade besch
 dort weichen sie ab. Das Ergebnis ist 4 194 304 Bytes groß, an `0x10000` steht `CASIOWIN`.
 RomDump lässt sich anschließend über MENU → MEMORY löschen.
 
-| Adresse | Inhalt |
-|---|---|
-| `0x000000` | Bootloader (`CASIOABS`) |
-| `0x010000` | Betriebssystem (`CASIOWIN`) |
+| Adresse    | Inhalt                                        |
+| ---------- | --------------------------------------------- |
+| `0x000000` | Bootloader (`CASIOABS`)                       |
+| `0x010000` | Betriebssystem (`CASIOWIN`)                   |
 | `0x250000` | Sicherung des Hauptspeichers (`CASIOMEMDATA`) |
-| `0x270000` | Speicher-Dateisystem |
+| `0x270000` | Speicher-Dateisystem                          |
 
 `p7.py` implementiert CASIOs Protocol 7.00 nach der Dokumentation des
 [Cahute-Projekts](https://cahuteproject.org/) (Befehle: `info`, `ls`, `get`, `put`, `pull`,
@@ -87,16 +87,16 @@ RomDump lässt sich anschließend über MENU → MEMORY löschen.
 Der Emulator in `fxemu/` ist in Rust geschrieben; einzige Abhängigkeit ist `minifb` für
 das Windows-Fenster.
 
-| Datei | Inhalt |
-|---|---|
-| `src/cpu.rs` | SH-4A-Kern: Befehlssatz, Delay-Slots, Registerbänke, Exceptions, Interrupts, MMU |
-| `src/bus.rs` | Speicherkarte und Peripherie des SH7305 |
-| `src/timers.rs` | TMU, ETMU, CMT, Echtzeituhr |
-| `src/flash.rs`, `src/lcd.rs` | NOR-Flash und Display-Controller (T6K11-kompatibel) |
-| `src/state.rs` | Speichern und Laden des Zustands |
-| `src/gui.rs`, `src/web.rs` | Windows-Fenster bzw. Browser-Oberfläche (`--web`) |
-| `src/main.rs` | Start, Zeitsteuerung, Debug-Optionen |
-| `res/make_skin.py` | zeichnet die Oberfläche nach dem Vorbild des echten Rechners |
+| Datei                        | Inhalt                                                                           |
+| ---------------------------- | -------------------------------------------------------------------------------- |
+| `src/cpu.rs`                 | SH-4A-Kern: Befehlssatz, Delay-Slots, Registerbänke, Exceptions, Interrupts, MMU |
+| `src/bus.rs`                 | Speicherkarte und Peripherie des SH7305                                          |
+| `src/timers.rs`              | TMU, ETMU, CMT, Echtzeituhr                                                      |
+| `src/flash.rs`, `src/lcd.rs` | NOR-Flash und Display-Controller (T6K11-kompatibel)                              |
+| `src/state.rs`               | Speichern und Laden des Zustands                                                 |
+| `src/gui.rs`, `src/web.rs`   | Windows-Fenster bzw. Browser-Oberfläche (`--web`)                                |
+| `src/main.rs`                | Start, Zeitsteuerung, Debug-Optionen                                             |
+| `res/make_skin.py`           | zeichnet die Oberfläche nach dem Vorbild des echten Rechners                     |
 
 Einige Hardware-Details sind nicht dokumentiert und wurden aus dem OS-Code abgeleitet:
 
