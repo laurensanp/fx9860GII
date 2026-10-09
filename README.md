@@ -6,6 +6,9 @@ echten Gerät ausgelesen und einen eigenen Emulator geschrieben, der diese
 Firmware unverändert ausführt. Bootloader und Betriebssystem laufen wie auf dem
 Rechner, mit den Einstellungen und Daten, die beim Auslesen darauf gespeichert waren.
 
+**Die Firmware ist nicht in diesem Repository.** Sie gehört CASIO. Zum Bauen brauchst
+du einen Dump deines eigenen Rechners; wie man ihn ausliest, steht unten.
+
 <img src="fxemu/res/skin/skin.png" alt="Emulator-Fenster" width="300">
 
 Das Fenster ist dem echten Rechner nachgebildet: silbernes Gehäuse, dunkles Bedienfeld
@@ -14,14 +17,17 @@ und der rote ALPHA-Buchstabe.
 
 ## Schnellstart
 
-`fx9860GII.exe` doppelklicken.
+1. Den 4-MiB-Dump deines Rechners als `dump/fx9860gii2_full_4MB.bin` ablegen
+   (siehe [Wie der Dump entsteht](#wie-der-dump-entsteht)).
+2. Den Emulator bauen (siehe [Bauen](#bauen)). Die Firmware wird dabei in die exe eingebettet.
+3. Die exe doppelklicken.
 
 - Der allererste Start bootet den Rechner (ca. 8 Sekunden, wie beim echten Gerät).
   Danach geht es bei jedem Start genau dort weiter, wo das Fenster geschlossen wurde.
 - **Schließen (X)** = Ausschalten. Alles wird gespeichert.
 - **SHIFT + AC/ON** schaltet aus, **AC/ON** wieder ein.
-- Die exe ist eigenständig (Firmware eingebaut, keine weiteren Dateien nötig).
-  Es läuft immer nur eine Instanz; ein zweiter Start holt das offene Fenster nach vorne.
+- Die fertige exe ist eigenständig (Firmware eingebaut, keine weiteren Dateien nötig).
+  Gib sie deshalb nicht weiter. Es läuft immer nur eine Instanz; ein zweiter Start holt das offene Fenster nach vorne.
 
 ### Bedienung
 
@@ -55,11 +61,12 @@ Der Original-Dump wird dabei nicht verändert.
 
 | Pfad | Inhalt |
 |---|---|
-| `fx9860GII.exe` | der fertige Emulator für Windows |
-| `dump/fx9860gii2_full_4MB.bin` | die ausgelesene Firmware: der komplette 4-MiB-Flash |
 | `fxemu/` | Quellcode des Emulators (Rust) |
 | `romdump/` | Quellcode und fertiges Dumper-Add-in `ROMDUMP.g1a` für den Rechner |
 | `p7.py` | PC-Link-Werkzeug (CASIO Protocol 7.00 über USB) |
+
+Nicht im Repository (per `.gitignore` ausgeschlossen): `dump/` mit der Firmware und die
+gebaute `fx9860GII.exe`, weil sie die Firmware enthält.
 
 ### Aufteilung des Flash
 
@@ -71,7 +78,7 @@ Der Original-Dump wird dabei nicht verändert.
 | `0x270000` | Speicher-Dateisystem (deine Dateien) |
 | `0x300000+` | größtenteils leer |
 
-## Wie der Dump entstanden ist
+## Wie der Dump entsteht
 
 1. **USB-Verbindung:** Der Rechner meldet sich als `CESG502` (`07CF:6101`). Mit Zadig
    wurde der WinUSB-Treiber installiert; `p7.py` spricht damit CASIOs Protocol 7.00
@@ -84,7 +91,8 @@ Der Original-Dump wird dabei nicht verändert.
    läuft die Kopie über einen RAM-Puffer.
 3. **Übertragung:** Pro Segment eine Runde: RomDump ausführen → LINK → RECV →
    `p7.py pull ROM0x.bin` lädt die Datei, löscht sie vom Rechner und optimiert den Speicher.
-   Die vier Segmente ergeben zusammen `fx9860gii2_full_4MB.bin`.
+   Die vier Segmente ergeben aneinandergehängt `fx9860gii2_full_4MB.bin`, unter Windows z. B. mit
+   `copy /b ROM00.bin+ROM01.bin+ROM02.bin+ROM03.bin dump\fx9860gii2_full_4MB.bin`.
    Segment 0 wurde per Prüfsumme gegen den Rechner verifiziert, Segment 2 per zweitem Dump.
 
 `p7.py` braucht Python mit `pyusb` und `libusb-package`
@@ -127,6 +135,9 @@ Diese Punkte standen in keiner Dokumentation, die wir gefunden haben; sie stamme
 
 ### Bauen
 
+Voraussetzung: dein Dump liegt unter `dump/fx9860gii2_full_4MB.bin`. Ohne diese Datei
+bricht der Build ab.
+
 In WSL Ubuntu mit Rust und `gcc-mingw-w64-x86-64`:
 
 ```bash
@@ -135,7 +146,7 @@ cargo build --release --target x86_64-pc-windows-gnu
 ```
 
 Ergebnis: `target/x86_64-pc-windows-gnu/release/fxemu.exe`. Die Firmware wird beim Bauen
-aus `dump/fx9860gii2_full_4MB.bin` eingebettet.
+eingebettet. Alternativ lässt sich ein Dump zur Laufzeit mit `--rom DATEI` laden.
 
 ### Debug-Optionen
 
@@ -159,5 +170,8 @@ Weitere Optionen: `--trace-io`, `--trace-irq`, `--trace-exc`, `--trace-flash`,
 
 ## Rechtliches
 
-Die Firmware in `dump/` und in der exe gehört CASIO. Beides ist nur für den eigenen
-Gebrauch gedacht und sollte nicht weitergegeben oder veröffentlicht werden.
+Dieses Repository enthält nur eigenen Code. Die Firmware gehört CASIO und ist deshalb
+nicht enthalten. Ein eigener Dump und die daraus gebaute exe sind nur für den eigenen
+Gebrauch gedacht und dürfen nicht weitergegeben oder veröffentlicht werden.
+CASIO und fx-9860GII sind Marken der CASIO Computer Co., Ltd.; dieses Projekt ist kein
+Produkt von CASIO.
