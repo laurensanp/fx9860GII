@@ -7,7 +7,8 @@ Firmware unverändert ausführt. Bootloader und Betriebssystem laufen wie auf de
 Rechner, mit den Einstellungen und Daten, die beim Auslesen darauf gespeichert waren.
 
 **Die Firmware ist nicht in diesem Repository.** Sie gehört CASIO. Zum Bauen brauchst
-du einen Dump deines eigenen Rechners; wie man ihn ausliest, steht unten.
+du einen Dump deines eigenen Rechners. Wie ich meinen ausgelesen habe, steht Schritt für
+Schritt [weiter unten](#so-habe-ich-meine-firmware-ausgelesen).
 
 <img src="fxemu/res/skin/skin.png" alt="Emulator-Fenster" width="300">
 
@@ -18,7 +19,7 @@ und der rote ALPHA-Buchstabe.
 ## Schnellstart
 
 1. Den 4-MiB-Dump deines Rechners als `dump/fx9860gii2_full_4MB.bin` ablegen
-   (siehe [Wie der Dump entsteht](#wie-der-dump-entsteht)).
+   (siehe [So habe ich meine Firmware ausgelesen](#so-habe-ich-meine-firmware-ausgelesen)).
 2. Den Emulator bauen (siehe [Bauen](#bauen)). Die Firmware wird dabei in die exe eingebettet.
 3. Die exe doppelklicken.
 
@@ -78,28 +79,89 @@ gebaute `fx9860GII.exe`, weil sie die Firmware enthält.
 | `0x270000` | Speicher-Dateisystem (deine Dateien) |
 | `0x300000+` | größtenteils leer |
 
-## Wie der Dump entsteht
+## So habe ich meine Firmware ausgelesen
 
-1. **USB-Verbindung:** Der Rechner meldet sich als `CESG502` (`07CF:6101`). Mit Zadig
-   wurde der WinUSB-Treiber installiert; `p7.py` spricht damit CASIOs Protocol 7.00
-   (Dokumentation: [Cahute-Projekt](https://cahuteproject.org/)).
-   CASIOs FA-124 funktioniert mit WinUSB nicht, bis der Treiber im Geräte-Manager
-   zurückgesetzt wird.
-2. **Dumper-Add-in:** Das Link-Protokoll kann keinen Flash lesen. Deshalb wurde mit dem
-   fxSDK (in WSL) ein kleines Add-in `ROMDUMP.g1a` gebaut. Es kopiert jeweils 1 MiB des
-   ROMs als Datei in den Speicher. Weil Speicher und ROM auf demselben Flash-Chip liegen,
-   läuft die Kopie über einen RAM-Puffer.
-3. **Übertragung:** Pro Segment eine Runde: RomDump ausführen → LINK → RECV →
-   `p7.py pull ROM0x.bin` lädt die Datei, löscht sie vom Rechner und optimiert den Speicher.
-   Die vier Segmente ergeben aneinandergehängt `fx9860gii2_full_4MB.bin`, unter Windows z. B. mit
-   `copy /b ROM00.bin+ROM01.bin+ROM02.bin+ROM03.bin dump\fx9860gii2_full_4MB.bin`.
-   Segment 0 wurde per Prüfsumme gegen den Rechner verifiziert, Segment 2 per zweitem Dump.
+Jeder braucht die Firmware seines eigenen Rechners. So bin ich vorgegangen; mit den
+Werkzeugen in diesem Repository kannst du es genauso machen.
 
-`p7.py` braucht Python mit `pyusb` und `libusb-package`
-(`pip install pyusb libusb-package`). Befehle: `info`, `ls`, `get`, `put`, `pull`, `rm`,
-`optimize`, `prep`. Der Rechner muss dafür in LINK → RECV stehen.
+**Du brauchst:** einen fx-9860GII-2 ("USB POWER GRAPHIC 2", 4 MiB Flash), ein
+Mini-USB-Kabel, das Daten überträgt (reine Ladekabel gehen nicht), einen Windows-PC mit
+Python 3 sowie [Zadig](https://zadig.akeo.ie/).
 
-Das Add-in baut man im fxSDK mit `fxsdk build-fx` im Ordner `romdump/`.
+### 1. USB-Treiber einrichten
+
+1. Rechner per USB anschließen, dann **MENU → LINK → F2 (RECV)**.
+2. Zadig starten, **Options → List All Devices**, das Gerät **CESG502** wählen
+   (USB-ID `07CF 6101`), als Treiber **WinUSB** einstellen und **Install Driver** klicken.
+3. Python-Pakete installieren:
+
+   ```bash
+   pip install pyusb libusb-package
+   ```
+
+4. Verbindung testen; die Ausgabe zeigt unter anderem OS-Version und Flash-Größe:
+
+   ```bash
+   python p7.py info
+   ```
+
+Wichtig: Der Rechner verlässt den Empfangsmodus nach jedem Befehl. Vor jedem
+`p7.py`-Befehl also erneut **F2 (RECV)** im LINK-Menü drücken.
+
+Nach dem Wechsel auf WinUSB erkennt CASIOs FA-124 den Rechner nicht mehr, bis der Treiber
+im Geräte-Manager zurückgesetzt wird.
+
+### 2. Das Dumper-Add-in übertragen
+
+Das Link-Protokoll kann keinen Flash lesen. Deshalb gibt es das kleine Add-in
+`romdump/ROMDUMP.g1a`: Es läuft auf dem Rechner und kopiert jeweils 1 MiB des ROMs als
+Datei in den Speicher. Weil Speicher und ROM auf demselben Flash-Chip liegen, kopiert es
+über einen RAM-Puffer.
+
+Dieser Befehl räumt den Speicher auf (damit 1 MiB frei ist) und überträgt das Add-in:
+
+```bash
+python p7.py prep romdump/ROMDUMP.g1a
+```
+
+Danach steht **RomDump** im Hauptmenü.
+
+### 3. Die vier Segmente auslesen
+
+Für jedes Segment 0 bis 3 eine Runde:
+
+1. **MENU → RomDump** öffnen, mit **▲/▼** das Segment wählen, **EXE** drücken.
+2. Warten, bis **"Done! Now use LINK."** erscheint. Den angezeigten **Sum**-Wert notieren.
+3. **MENU → LINK → F2 (RECV)**, dann am PC (Beispiel für Segment 0):
+
+   ```bash
+   python p7.py pull ROM00.bin --outdir dump
+   ```
+
+   Das lädt die Datei herunter (etwa 3 Minuten), löscht sie vom Rechner und räumt den
+   Speicher wieder auf.
+
+Zum Prüfen gibt `p7.py pull` ebenfalls eine Summe aus ("word sum"). Bei Segment 0 und 1
+muss sie mit der auf dem Rechner übereinstimmen. Segment 2 und 3 enthalten den Speicher,
+in den RomDump gerade schreibt; dort weichen die Summen ab, das ist normal.
+
+### 4. Zusammenfügen
+
+```bash
+copy /b dump\ROM00.bin+dump\ROM01.bin+dump\ROM02.bin+dump\ROM03.bin dump\fx9860gii2_full_4MB.bin
+```
+
+Die Datei muss genau 4 194 304 Bytes groß sein; an Adresse `0x10000` steht der Text
+`CASIOWIN`. Danach kann RomDump über **MENU → MEMORY** wieder vom Rechner gelöscht werden.
+
+### Werkzeuge im Detail
+
+`p7.py` spricht CASIOs Protocol 7.00 über USB (Dokumentation:
+[Cahute-Projekt](https://cahuteproject.org/)). Befehle: `info`, `ls`, `get`, `put`, `pull`,
+`rm`, `optimize`, `prep`.
+
+Das Add-in lässt sich mit dem [fxSDK](https://git.planet-casio.com/Lephenixnoir/fxsdk)
+neu bauen: `fxsdk build-fx` im Ordner `romdump/`.
 
 ## Der Emulator (`fxemu/`)
 

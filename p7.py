@@ -356,6 +356,7 @@ def main(argv):
                 sys.exit(2)
             t0 = time.monotonic()
             data = link.get_file(a.name)
+            os.makedirs(a.outdir, exist_ok=True)
             out = os.path.join(a.outdir, a.name)
             with open(out, "wb") as f:
                 f.write(data)
