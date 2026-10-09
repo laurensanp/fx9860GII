@@ -1,12 +1,13 @@
 # fx-9860GII-2 – Firmware-Dump und Emulator
 
-Für dieses Projekt habe ich die Firmware meines CASIO fx-9860GII-2 ("USB POWER GRAPHIC 2",
-Hardware-ID `Gy363007`, OS 02.09.0201) ausgelesen und einen Emulator geschrieben, der sie
-unverändert ausführt, vom Bootloader bis zum Betriebssystem.
+Dieses Projekt umfasst einen Emulator für den CASIO fx-9860GII-2 ("USB POWER GRAPHIC 2",
+Hardware-ID `Gy363007`, OS 02.09.0201) sowie die Werkzeuge, mit denen die Firmware aus dem
+Gerät ausgelesen wurde. Der Emulator führt diese Firmware unverändert aus, vom Bootloader
+bis zum Betriebssystem.
 
 Die Firmware selbst ist nicht enthalten, da sie CASIO gehört. Wer den Emulator nutzen
-möchte, benötigt einen Dump des eigenen Rechners; mein Vorgehen dazu beschreibe ich
-[unten](#auslesen-der-firmware).
+möchte, benötigt einen Dump des eigenen Rechners; das Vorgehen ist
+[unten](#auslesen-der-firmware) beschrieben.
 
 <img src="fxemu/res/skin/skin.png" alt="Emulator-Fenster" width="300">
 
@@ -42,10 +43,10 @@ Der emulierte Flash (`flash.bin`) und der gespeicherte Zustand (`state.bin`) lie
 Voraussetzungen: ein fx-9860GII-2 mit 4 MiB Flash, ein Mini-USB-Datenkabel, Windows mit
 Python 3 und [Zadig](https://zadig.akeo.ie/).
 
-Das Link-Protokoll des Rechners kann den Flash nicht lesen. Ich habe deshalb das Add-in
-`romdump/ROMDUMP.g1a` geschrieben, das jeweils 1 MiB des ROMs als Datei in den Speicher
-kopiert. Da Speicher und ROM auf demselben Flash-Chip liegen, kopiert es über einen
-RAM-Puffer. Die Dateien lade ich anschließend mit `p7.py` herunter.
+Das Link-Protokoll des Rechners kann den Flash nicht lesen. Deshalb kopiert das Add-in
+`romdump/ROMDUMP.g1a` jeweils 1 MiB des ROMs als Datei in den Speicher. Da Speicher und
+ROM auf demselben Flash-Chip liegen, geschieht das über einen RAM-Puffer. Anschließend
+werden die Dateien mit `p7.py` heruntergeladen.
 
 Der Rechner verlässt den Empfangsmodus nach jedem Befehl; vor jedem `p7.py`-Aufruf ist
 daher erneut **MENU → LINK → F2 (RECV)** nötig.
@@ -78,8 +79,8 @@ RomDump lässt sich anschließend über MENU → MEMORY löschen.
 
 `p7.py` implementiert CASIOs Protocol 7.00 nach der Dokumentation des
 [Cahute-Projekts](https://cahuteproject.org/) (Befehle: `info`, `ls`, `get`, `put`, `pull`,
-`rm`, `optimize`, `prep`). Das Add-in baue ich mit dem
-[fxSDK](https://git.planet-casio.com/Lephenixnoir/fxsdk) (`fxsdk build-fx` in `romdump/`).
+`rm`, `optimize`, `prep`). Das Add-in wird mit dem
+[fxSDK](https://git.planet-casio.com/Lephenixnoir/fxsdk) gebaut (`fxsdk build-fx` in `romdump/`).
 
 ## Emulator
 
@@ -97,8 +98,7 @@ das Windows-Fenster.
 | `src/main.rs` | Start, Zeitsteuerung, Debug-Optionen |
 | `res/make_skin.py` | zeichnet die Oberfläche nach dem Vorbild des echten Rechners |
 
-Einige Hardware-Details habe ich in keiner Dokumentation gefunden und aus dem OS-Code
-abgeleitet:
+Einige Hardware-Details sind nicht dokumentiert und wurden aus dem OS-Code abgeleitet:
 
 - **Boot-Pin:** Port `0xA405013A` Bit 0 muss 1 lesen, sonst startet das OS im Update-Modus.
 - **Tastatur:** Status-Register `0xA44B0014`; das untere Byte enthält Ereignis-Flags
