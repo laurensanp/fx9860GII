@@ -18,6 +18,9 @@ use layout::*;
 
 pub const TITLE: &str = "fx-9860GII Emulator";
 
+/// Window background around the calculator.
+const BG_COLOR: u32 = 0x11161C;
+
 static SKIN: &[u8] = include_bytes!("../res/skin/skin.rgb");
 static TURBO_ON: &[u8] = include_bytes!("../res/skin/turbo_on.rgb");
 static MSG_OFF: &[u8] = include_bytes!("../res/skin/msg_off.rgb");
@@ -240,6 +243,92 @@ fn save_screenshot(lcd: &[u8]) -> std::io::Result<std::path::PathBuf> {
     Ok(path)
 }
 
+/// Where the skin goes inside a window of the given size: scaled to fit, centred.
+/// Returns (content width, content height, x offset, y offset).
+fn fit(ww: usize, wh: usize) -> (usize, usize, usize, usize) {
+    let s = (ww as f32 / W as f32).min(wh as f32 / H as f32);
+    let cw = ((W as f32 * s).round() as usize).clamp(1, ww.max(1));
+    let ch = ((H as f32 * s).round() as usize).clamp(1, wh.max(1));
+    (cw, ch, (ww - cw) / 2, (wh - ch) / 2)
+}
+
+/// Smooth image scaling, so thin lines in small labels survive when the
+/// window is smaller than the skin. Shrinking averages all covered source
+/// pixels; enlarging interpolates linearly.
+struct Resampler {
+    cw: usize,
+    ch: usize,
+    cols: Vec<Vec<(usize, f32)>>,
+    rows: Vec<Vec<(usize, f32)>>,
+    tmp: Vec<[f32; 3]>,
+}
+
+fn axis_weights(src: usize, dst: usize) -> Vec<Vec<(usize, f32)>> {
+    let scale = src as f32 / dst as f32;
+    (0..dst)
+        .map(|i| {
+            let mut w = Vec::new();
+            if scale >= 1.0 {
+                let (a, b) = (i as f32 * scale, (i + 1) as f32 * scale);
+                let mut k = a.floor() as usize;
+                while (k as f32) < b && k < src {
+                    let overlap = (b.min(k as f32 + 1.0) - a.max(k as f32)).max(0.0);
+                    if overlap > 0.0 {
+                        w.push((k, overlap / scale));
+                    }
+                    k += 1;
+                }
+            } else {
+                let c = ((i as f32 + 0.5) * scale - 0.5).max(0.0);
+                let k = (c.floor() as usize).min(src - 1);
+                let f = c - k as f32;
+                w.push((k, 1.0 - f));
+                if k + 1 < src {
+                    w.push((k + 1, f));
+                }
+            }
+            w
+        })
+        .collect()
+}
+
+impl Resampler {
+    fn new(cw: usize, ch: usize) -> Self {
+        Resampler { cw, ch, cols: axis_weights(W, cw), rows: axis_weights(H, ch), tmp: vec![[0.0; 3]; cw * H] }
+    }
+
+    /// Scale `src` (W x H) into `dst` (dst_w wide) at offset (ox, oy).
+    fn run(&mut self, src: &[u32], dst: &mut [u32], dst_w: usize, ox: usize, oy: usize) {
+        for y in 0..H {
+            let line = &src[y * W..(y + 1) * W];
+            for (x, taps) in self.cols.iter().enumerate() {
+                let mut acc = [0.0f32; 3];
+                for &(k, wt) in taps {
+                    let p = line[k];
+                    acc[0] += (p >> 16 & 255) as f32 * wt;
+                    acc[1] += (p >> 8 & 255) as f32 * wt;
+                    acc[2] += (p & 255) as f32 * wt;
+                }
+                self.tmp[y * self.cw + x] = acc;
+            }
+        }
+        for (y, taps) in self.rows.iter().enumerate() {
+            let o = (oy + y) * dst_w + ox;
+            for x in 0..self.cw {
+                let mut acc = [0.0f32; 3];
+                for &(k, wt) in taps {
+                    let t = self.tmp[k * self.cw + x];
+                    acc[0] += t[0] * wt;
+                    acc[1] += t[1] * wt;
+                    acc[2] += t[2] * wt;
+                }
+                let c = |v: f32| (v.round().clamp(0.0, 255.0)) as u32;
+                dst[o + x] = c(acc[0]) << 16 | c(acc[1]) << 8 | c(acc[2]);
+            }
+        }
+    }
+}
+
 /// Initial window size: the full skin, shrunk if needed to fit the usable
 /// screen height (keeping the aspect ratio). The window can be resized later.
 fn initial_size() -> (usize, usize) {
@@ -285,6 +374,8 @@ pub fn run(shared: Arc<Shared>) {
     let turbo_rect = TOOLS.iter().find(|t| t.0 == "turbo").copied().unwrap();
 
     let mut buf = vec![0u32; W * H];
+    let mut out: Vec<u32> = Vec::new();
+    let mut resampler: Option<Resampler> = None;
     let mut mouse_key: Option<u8> = None;
     let mut mouse_was_down = false;
     let mut held: HashSet<u8> = HashSet::new(); // keys held via keyboard/mouse, for highlighting
@@ -298,13 +389,11 @@ pub fn run(shared: Arc<Shared>) {
         // --- mouse ---
         let down = window.get_mouse_down(MouseButton::Left);
         let pos = window.get_unscaled_mouse_pos(MouseMode::Discard).and_then(|(mx, my)| {
-            // Map window pixels to skin pixels (the skin is scaled to fit, centred).
+            // Map window pixels to skin pixels (same fit as the drawing below).
             let (ww, wh) = window.get_size();
-            let s = (ww as f32 / W as f32).min(wh as f32 / H as f32);
-            let ox = (ww as f32 - W as f32 * s) / 2.0;
-            let oy = (wh as f32 - H as f32 * s) / 2.0;
-            let x = (mx - ox) / s;
-            let y = (my - oy) / s;
+            let (cw, ch, ox, oy) = fit(ww, wh);
+            let x = (mx - ox as f32) * W as f32 / cw as f32;
+            let y = (my - oy as f32) * H as f32 / ch as f32;
             (x >= 0.0 && y >= 0.0 && (x as usize) < W && (y as usize) < H).then(|| (x as usize, y as usize))
         });
         if down && !mouse_was_down {
@@ -399,7 +488,23 @@ pub fn run(shared: Arc<Shared>) {
         };
         blit(&mut buf, msg, STATUS_X, STATUS_Y, STATUS_W);
 
-        if window.update_with_buffer(&buf, W, H).is_err() {
+        let (ww, wh) = window.get_size();
+        let (ww, wh) = (ww.max(1), wh.max(1));
+        let ok = if (ww, wh) == (W, H) {
+            window.update_with_buffer(&buf, W, H)
+        } else {
+            let (cw, ch, ox, oy) = fit(ww, wh);
+            if resampler.as_ref().map_or(true, |r| (r.cw, r.ch) != (cw, ch)) {
+                resampler = Some(Resampler::new(cw, ch));
+            }
+            if out.len() != ww * wh {
+                out = vec![0u32; ww * wh];
+            }
+            out.fill(BG_COLOR);
+            resampler.as_mut().unwrap().run(&buf, &mut out, ww, ox, oy);
+            window.update_with_buffer(&out, ww, wh)
+        };
+        if ok.is_err() {
             break;
         }
     }
