@@ -3,7 +3,11 @@ fx-9860GII "USB POWER GRAPHIC 2") and writes it, plus the key/button
 positions, into fxemu/res/skin/. Needs Pillow and the DejaVu fonts.
 
     python3 make_skin.py <output dir> <font dir>
+
+With SKIN_SCALE=3 in the environment it draws a sharp high-resolution version
+(skin@3x.png) for the iPhone web app instead; all positions stay in 1x units.
 """
+import json
 import math
 import os
 import sys
@@ -12,6 +16,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 OUT, FONTS = sys.argv[1], sys.argv[2]
 os.makedirs(OUT, exist_ok=True)
+S = float(os.environ.get("SKIN_SCALE", "1"))
 
 W, H = 460, 1022
 LCD_X, LCD_Y, LCD_SCALE = 38, 92, 3            # LCD is 128x64, drawn at 3x
@@ -42,7 +47,43 @@ KEY_STYLES = {
 
 
 def font(name, size):
-    return ImageFont.truetype(os.path.join(FONTS, name), size)
+    return ImageFont.truetype(os.path.join(FONTS, name), round(size * S))
+
+
+class SD:
+    """ImageDraw wrapper: takes and returns coordinates in 1x units, draws at scale S."""
+
+    def __init__(self, draw):
+        self.d = draw
+
+    def rounded_rectangle(self, box, radius=0, fill=None):
+        self.d.rounded_rectangle([c * S for c in box], radius=radius * S, fill=fill)
+
+    def rectangle(self, box, fill=None):
+        self.d.rectangle([c * S for c in box], fill=fill)
+
+    def ellipse(self, box, fill=None):
+        self.d.ellipse([c * S for c in box], fill=fill)
+
+    def polygon(self, pts, fill=None):
+        self.d.polygon([(x * S, y * S) for x, y in pts], fill=fill)
+
+    def text(self, xy, text, font=None, fill=None):
+        self.d.text((xy[0] * S, xy[1] * S), text, font=font, fill=fill)
+
+    def textbbox(self, xy, text, font=None):
+        return tuple(v / S for v in self.d.textbbox((xy[0] * S, xy[1] * S), text, font=font))
+
+    def textlength(self, text, font=None):
+        return self.d.textlength(text, font=font) / S
+
+
+def sub_image(w, h):
+    return Image.new("RGBA", (round(w * S), round(h * S)), (0, 0, 0, 0))
+
+
+def paste(im, x, y):
+    img.paste(im, (round(x * S), round(y * S)), im)
 
 
 F_SMALL = font("DejaVuSans.ttf", 10)
@@ -53,8 +94,8 @@ F_FKEY = font("DejaVuSans-Bold.ttf", 14)
 F_TOOL = font("DejaVuSans.ttf", 11)
 F_STATUS = font("DejaVuSans.ttf", 11)
 
-img = Image.new("RGB", (W, H), BG)
-d = ImageDraw.Draw(img)
+img = Image.new("RGB", (round(W * S), round(H * S)), BG)
+d = SD(ImageDraw.Draw(img))
 
 
 def centered(draw, box, text, f, fill):
@@ -76,10 +117,10 @@ x = 30
 for ch in "CASIO":
     d.text((x, 18), ch, font=font("DejaVuSans-Bold.ttf", 30), fill=TEXT_DARK)
     x += d.textlength(ch, font=font("DejaVuSans-Bold.ttf", 30)) + 1
-model = Image.new("RGBA", (220, 40), (0, 0, 0, 0))
-ImageDraw.Draw(model).text((14, 4), "fx-9860GII", font=font("DejaVuSerif.ttf", 24), fill=TEXT_DARK + (255,))
-model = model.transform(model.size, Image.AFFINE, (1, 0.25, -6, 0, 1, 0), resample=Image.BICUBIC)
-img.paste(model, (W - 220 - 16, 18), model)
+model = sub_image(220, 40)
+SD(ImageDraw.Draw(model)).text((14, 4), "fx-9860GII", font=font("DejaVuSerif.ttf", 24), fill=TEXT_DARK + (255,))
+model = model.transform(model.size, Image.AFFINE, (1, 0.25, -6 * S, 0, 1, 0), resample=Image.BICUBIC)
+paste(model, W - 220 - 16, 18)
 
 # --- dark upper panel with the screen ---
 d.rounded_rectangle([16, 62, W - 17, 528], radius=30, fill=PANEL)
@@ -91,12 +132,12 @@ d.rectangle([LCD_X, LCD_Y, LCD_X + 128 * LCD_SCALE - 1, LCD_Y + 64 * LCD_SCALE -
 usb_f = font("DejaVuSans-Bold.ttf", 15)
 rest_f = font("DejaVuSans.ttf", 12)
 two_f = font("DejaVuSans-Bold.ttf", 15)
-usb = Image.new("RGBA", (50, 24), (0, 0, 0, 0))
-ImageDraw.Draw(usb).text((4, 2), "USB", font=usb_f, fill=WHITE + (255,))
-usb = usb.transform(usb.size, Image.AFFINE, (1, 0.22, -4, 0, 1, 0), resample=Image.BICUBIC)
+usb = sub_image(50, 24)
+SD(ImageDraw.Draw(usb)).text((4, 2), "USB", font=usb_f, fill=WHITE + (255,))
+usb = usb.transform(usb.size, Image.AFFINE, (1, 0.22, -4 * S, 0, 1, 0), resample=Image.BICUBIC)
 total = 42 + d.textlength(" POWER GRAPHIC ", font=rest_f) + d.textlength("2", font=two_f)
 x0 = (W - total) / 2
-img.paste(usb, (int(x0), 305), usb)
+paste(usb, int(x0), 305)
 d.text((x0 + 40, 309), " POWER GRAPHIC ", font=rest_f, fill=WHITE)
 d.text((x0 + 40 + d.textlength(" POWER GRAPHIC ", font=rest_f), 305), "2", font=two_f, fill=WHITE)
 
@@ -226,6 +267,20 @@ for (name, label), w in zip(labels, widths):
     draw_tool(d, box, label, False)
     tools.append((name, box))
     x += w + 8
+
+# Positions for the web app (1x units, independent of the drawing scale).
+layout = {
+    "w": W, "h": H, "lcd": [LCD_X, LCD_Y, 128 * LCD_SCALE, 64 * LCD_SCALE],
+    "lcd_on": "#2A2E28", "lcd_off": "#%02X%02X%02X" % LCD_BG,
+    "status": [20, STATUS_Y, W - 40, STATUS_H], "silver": "#%02X%02X%02X" % SILVER,
+    "keys": [[c, n, x0, y0, x1, y1] for c, n, x0, y0, x1, y1 in keys],
+    "tools": [[n, *b] for n, b in tools],
+}
+if S != 1:
+    img.save(os.path.join(OUT, "skin@%gx.png" % S))
+    json.dump(layout, open(os.path.join(OUT, "layout.json"), "w"), indent=1)
+    print("high-resolution skin written:", img.size)
+    sys.exit(0)
 
 img.save(os.path.join(OUT, "skin.png"))
 open(os.path.join(OUT, "skin.rgb"), "wb").write(img.tobytes())

@@ -1,5 +1,6 @@
 //! SH7305 timer units (TMU, ETMU) and real-time clock.
 
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const CPU_HZ: u64 = 29_491_200;
@@ -230,7 +231,16 @@ fn days_in_month(m: u8, y: u16) -> u8 {
 
 impl Rtc {
     pub fn new() -> Self {
+        // There is no system clock in WebAssembly; the web app sets the time itself.
+        #[cfg(target_arch = "wasm32")]
+        let secs = 0;
+        #[cfg(not(target_arch = "wasm32"))]
         let secs = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+        Self::from_unix(secs)
+    }
+
+    /// Clock set to the given Unix time (UTC).
+    pub fn from_unix(secs: u64) -> Self {
         let days = (secs / 86400) as i64;
         let rem = secs % 86400;
         // Civil-from-days (Howard Hinnant's algorithm), UTC.
